@@ -2,6 +2,7 @@ import { app, BrowserWindow } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+app.commandLine.appendSwitch("enable-speech-dispatcher");
 createRequire(import.meta.url);
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname$1, "..");
@@ -13,8 +14,12 @@ let win;
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    width: 1e3,
+    height: 700,
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs")
+      preload: path.join(__dirname$1, "preload.mjs"),
+      contextIsolation: true,
+      nodeIntegration: false
     }
   });
   win.webContents.on("did-finish-load", () => {
@@ -37,7 +42,19 @@ app.on("activate", () => {
     createWindow();
   }
 });
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  app.on("web-contents-created", (_event, contents) => {
+    contents.session.setPermissionRequestHandler(
+      (_webContents, permission, callback) => {
+        if (permission === "media") {
+          callback(true);
+        } else {
+          callback(false);
+        }
+      }
+    );
+  });
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,
