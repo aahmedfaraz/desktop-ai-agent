@@ -1,30 +1,55 @@
-# React + TypeScript + Vite
+# DeskAgent
+DeskAgent is a text-controlled desktop assistant that interprets natural language commands and executes real actions on your computer. Users can type instructions like “open my Documents folder and play the cat video,” and DeskAgent will safely run the corresponding commands.  
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Currently, DeskAgent uses the GROQ API (Llama model) to parse text commands and Electron + Node.js to execute them safely on the desktop.
 
-Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Expanding the ESLint configuration
+## Installation
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+### Prerequisites
 
-- Configure the top-level `parserOptions` property like this:
+- Node.js ≥ 18  
+- npm or yarn  
+- Electron-compatible desktop OS (Windows, macOS, Linux)  
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+### Steps
+1. Clone the repo:
+```bash
+git clone https://github.com/aahmedfaraz/desktop-ai-agent
+cd desktop-ai-agent
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+2. Install dependencies
+```
+npm install
+```
+
+3. Set up environment variables
+```
+# .env
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+4. Start the app in development mode
+```bash
+npm run dev
+```
+
+## Usage
+1. Open DeskAgent.
+
+2. Type a natural language command in the text box, e.g. _open my documents folder and play the cat video_
+
+3. Hit Submit button. DeskAgent will parse the command and execute it safely.
+
+4. Feedback about executed commands is displayed in the UI.
+
+Note: Only predefined safe actions are allowed:
+
+`open_folder`
+`open_file`
+`launch_app`
+`play_media`
+
+DeskAgent validates paths and applications before running commands to prevent unsafe execution.
