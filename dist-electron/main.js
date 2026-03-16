@@ -48,7 +48,22 @@ async function handleOpenFolder(payloadPath) {
   }
   return { ok: true, message: `Opened folder: ${target}` };
 }
-async function handleOpenFile(payloadPath) {
+function pickPreferredExtensions(hint) {
+  const lowerHint = (hint ?? "").toLowerCase();
+  if (lowerHint.includes("pdf")) return [".pdf"];
+  if (lowerHint.includes("docx") || lowerHint.includes("word") || lowerHint.includes("doc"))
+    return [".docx", ".doc"];
+  if (lowerHint.includes("ppt") || lowerHint.includes("powerpoint"))
+    return [".pptx", ".ppt"];
+  if (lowerHint.includes("xls") || lowerHint.includes("excel"))
+    return [".xlsx", ".xls"];
+  if (lowerHint.includes("image") || lowerHint.includes("photo") || lowerHint.includes("picture") || lowerHint.includes("jpg") || lowerHint.includes("jpeg") || lowerHint.includes("png"))
+    return [".png", ".jpg", ".jpeg", ".gif", ".webp"];
+  if (lowerHint.includes("video") || lowerHint.includes("mp4") || lowerHint.includes("mkv"))
+    return [".mp4", ".mkv", ".mov", ".avi"];
+  return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".docx", ".doc"];
+}
+async function handleOpenFile(payloadPath, fileNameHint, originalText) {
   const target = resolveUserPath(payloadPath);
   if (!target) {
     throw new Error("No file path provided.");
@@ -56,20 +71,27 @@ async function handleOpenFile(payloadPath) {
   const stat = fs.existsSync(target) ? fs.statSync(target) : null;
   if (stat && stat.isDirectory()) {
     const entries = fs.readdirSync(target);
-    const imageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp"];
-    const imageFile = entries.find(
-      (entry) => imageExtensions.includes(path.extname(entry).toLowerCase())
+    const nameHint = fileNameHint || originalText || "";
+    const preferredExts = pickPreferredExtensions(nameHint);
+    const byName = entries.find((entry) => {
+      const lowerEntry = entry.toLowerCase();
+      const hasExt = preferredExts.includes(path.extname(entry).toLowerCase());
+      return hasExt && nameHint && lowerEntry.includes(nameHint.toLowerCase());
+    });
+    const byExt = byName || entries.find(
+      (entry) => preferredExts.includes(path.extname(entry).toLowerCase())
     );
-    if (!imageFile) {
-      throw new Error(`Folder has no image files to open: ${target}`);
+    const chosen = byName || byExt;
+    if (!chosen) {
+      throw new Error(`Folder has no matching files to open: ${target}`);
     }
-    const imagePath = path.join(target, imageFile);
-    ensurePathExists(imagePath, false);
-    const result2 = await shell.openPath(imagePath);
+    const filePath = path.join(target, chosen);
+    ensurePathExists(filePath, false);
+    const result2 = await shell.openPath(filePath);
     if (result2) {
       throw new Error(result2);
     }
-    return { ok: true, message: `Opened image file: ${imagePath}` };
+    return { ok: true, message: `Opened file: ${filePath}` };
   }
   ensurePathExists(target, false);
   const result = await shell.openPath(target);
@@ -118,7 +140,12 @@ async function executeCommand(command) {
       case "open_folder":
         return await handleOpenFolder(command.payload.path);
       case "open_file":
-        return await handleOpenFile(command.payload.path);
+        return await handleOpenFile(
+          command.payload.path,
+          // @ts-expect-error fileName is allowed but not required on payload
+          command.payload.fileName,
+          command.originalText
+        );
       case "play_media":
         return await handlePlayMedia(command.payload.mediaPath ?? command.payload.path);
       case "launch_app":

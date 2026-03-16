@@ -24,7 +24,10 @@ export function useCommand() {
     setError(null);
 
     try {
-      const groqResult = await parseCommandWithGroq(text);
+      const groqResult = await parseCommandWithGroq(text, {
+        lastCommandText: lastCommand?.originalText,
+        lastResolvedPath: lastCommand?.payload.path ?? lastCommand?.payload.mediaPath,
+      });
 
       const candidate: DeskAgentCommand = {
         action: groqResult.action as DeskAgentCommand['action'],

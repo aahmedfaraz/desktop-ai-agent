@@ -4,6 +4,7 @@ export interface BaseCommandPayload {
   path?: string;
   appName?: string;
   mediaPath?: string;
+  fileName?: string;
 }
 
 export interface DeskAgentCommand {
@@ -40,6 +41,10 @@ export function validateCommand(candidate: unknown): DeskAgentCommand | null {
   }
 
   if (payload.mediaPath && typeof payload.mediaPath !== 'string') {
+    return null;
+  }
+
+  if (payload.fileName && typeof payload.fileName !== 'string') {
     return null;
   }
 

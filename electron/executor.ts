@@ -69,7 +69,37 @@ async function handleOpenFolder(payloadPath?: string): Promise<ExecutionResult> 
   return { ok: true, message: `Opened folder: ${target}` };
 }
 
-async function handleOpenFile(payloadPath?: string): Promise<ExecutionResult> {
+function pickPreferredExtensions(hint: string | undefined): string[] {
+  const lowerHint = (hint ?? '').toLowerCase();
+
+  if (lowerHint.includes('pdf')) return ['.pdf'];
+  if (lowerHint.includes('docx') || lowerHint.includes('word') || lowerHint.includes('doc'))
+    return ['.docx', '.doc'];
+  if (lowerHint.includes('ppt') || lowerHint.includes('powerpoint'))
+    return ['.pptx', '.ppt'];
+  if (lowerHint.includes('xls') || lowerHint.includes('excel'))
+    return ['.xlsx', '.xls'];
+  if (
+    lowerHint.includes('image') ||
+    lowerHint.includes('photo') ||
+    lowerHint.includes('picture') ||
+    lowerHint.includes('jpg') ||
+    lowerHint.includes('jpeg') ||
+    lowerHint.includes('png')
+  )
+    return ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+  if (lowerHint.includes('video') || lowerHint.includes('mp4') || lowerHint.includes('mkv'))
+    return ['.mp4', '.mkv', '.mov', '.avi'];
+
+  // Default: any file, but we prioritize images for backwards compatibility.
+  return ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.docx', '.doc'];
+}
+
+async function handleOpenFile(
+  payloadPath?: string,
+  fileNameHint?: string,
+  originalText?: string,
+): Promise<ExecutionResult> {
   const target = resolveUserPath(payloadPath);
   if (!target) {
     throw new Error('No file path provided.');
@@ -79,26 +109,41 @@ async function handleOpenFile(payloadPath?: string): Promise<ExecutionResult> {
 
   if (stat && stat.isDirectory()) {
     // Heuristic: if a folder was provided where a file was expected,
-    // try to open the first image file inside that folder.
+    // try to open the most relevant file inside that folder.
     const entries = fs.readdirSync(target);
-    const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
-    const imageFile = entries.find((entry) =>
-      imageExtensions.includes(path.extname(entry).toLowerCase()),
-    );
 
-    if (!imageFile) {
-      throw new Error(`Folder has no image files to open: ${target}`);
+    const nameHint = fileNameHint || originalText || '';
+    const preferredExts = pickPreferredExtensions(nameHint);
+
+    // First try: match by name substring + preferred ext
+    const byName = entries.find((entry) => {
+      const lowerEntry = entry.toLowerCase();
+      const hasExt = preferredExts.includes(path.extname(entry).toLowerCase());
+      return hasExt && nameHint && lowerEntry.includes(nameHint.toLowerCase());
+    });
+
+    // Second try: any file with preferred ext
+    const byExt =
+      byName ||
+      entries.find((entry) =>
+        preferredExts.includes(path.extname(entry).toLowerCase()),
+      );
+
+    const chosen = byName || byExt;
+
+    if (!chosen) {
+      throw new Error(`Folder has no matching files to open: ${target}`);
     }
 
-    const imagePath = path.join(target, imageFile);
-    ensurePathExists(imagePath, false);
+    const filePath = path.join(target, chosen);
+    ensurePathExists(filePath, false);
 
-    const result = await shell.openPath(imagePath);
+    const result = await shell.openPath(filePath);
     if (result) {
       throw new Error(result);
     }
 
-    return { ok: true, message: `Opened image file: ${imagePath}` };
+    return { ok: true, message: `Opened file: ${filePath}` };
   }
 
   ensurePathExists(target, false);
@@ -164,7 +209,12 @@ export async function executeCommand(command: DeskAgentCommand): Promise<Executi
       case 'open_folder':
         return await handleOpenFolder(command.payload.path);
       case 'open_file':
-        return await handleOpenFile(command.payload.path);
+        return await handleOpenFile(
+          command.payload.path,
+          // @ts-expect-error fileName is allowed but not required on payload
+          (command.payload as any).fileName,
+          command.originalText,
+        );
       case 'play_media':
         return await handlePlayMedia(command.payload.mediaPath ?? command.payload.path);
       case 'launch_app':
