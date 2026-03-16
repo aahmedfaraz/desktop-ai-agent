@@ -17,9 +17,8 @@ function App() {
       <h1>DeskAgent (text-only prototype)</h1>
 
       <form onSubmit={handleSubmit} className="command-form">
-        <input
-          type="text"
-          placeholder="Type a command, e.g. open my Documents folder"
+        <textarea
+          placeholder="Give an instruction, e.g. open my Documents folder"
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />

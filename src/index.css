@@ -1,6 +1,12 @@
-:root {}
+.command-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
 
-@media (prefers-color-scheme: light) {
-  :root {
-  }
+.command-form textarea {
+  width: 600px;
+  min-height: 80px;
+  resize: both;
 }
