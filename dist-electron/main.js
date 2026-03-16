@@ -1,121 +1,69 @@
-import { shell, app, BrowserWindow, ipcMain } from "electron";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import fs from "node:fs";
-import os from "node:os";
-function resolveUserPath(rawPath) {
-  if (!rawPath) return null;
-  let resolved = rawPath.replace(/\\/g, "/");
-  const homeDir = os.homedir().replace(/\\/g, "/");
-  const username = os.userInfo().username;
-  resolved = resolved.replace(/C:\/Users\/USERNAME/gi, `C:/Users/${username}`);
-  if (resolved.startsWith("~/") || resolved === "~") {
-    resolved = resolved.replace(/^~(?=\/|$)/, homeDir);
-  }
-  const lower = resolved.toLowerCase();
-  if (lower === "downloads") {
-    resolved = path.join(homeDir, "Downloads");
-  } else if (lower === "documents" || lower === "docs") {
-    resolved = path.join(homeDir, "Documents");
-  } else if (lower === "desktop") {
-    resolved = path.join(homeDir, "Desktop");
-  }
-  return resolved;
+import { shell as c, app as d, BrowserWindow as P, ipcMain as $ } from "electron";
+import { fileURLToPath as O } from "node:url";
+import r from "node:path";
+import a from "node:fs";
+import _ from "node:os";
+function h(n) {
+  if (!n) return null;
+  let e = n.replace(/\\/g, "/");
+  const o = _.homedir().replace(/\\/g, "/"), t = _.userInfo().username;
+  e = e.replace(/C:\/Users\/USERNAME/gi, `C:/Users/${t}`), (e.startsWith("~/") || e === "~") && (e = e.replace(/^~(?=\/|$)/, o));
+  const i = e.toLowerCase();
+  return i === "downloads" ? e = r.join(o, "Downloads") : i === "documents" || i === "docs" ? e = r.join(o, "Documents") : i === "desktop" && (e = r.join(o, "Desktop")), e;
 }
-function ensurePathExists(targetPath, expectDirectory) {
-  if (!fs.existsSync(targetPath)) {
-    throw new Error(`Path does not exist: ${targetPath}`);
-  }
-  const stat = fs.statSync(targetPath);
-  if (expectDirectory && !stat.isDirectory()) {
-    throw new Error(`Expected a folder but got a file: ${targetPath}`);
-  }
-  if (!expectDirectory && !stat.isFile()) {
-    throw new Error(`Expected a file but got a folder: ${targetPath}`);
-  }
-  return stat;
+function p(n, e) {
+  if (!a.existsSync(n)) throw new Error(`Path does not exist: ${n}`);
+  const o = a.statSync(n);
+  if (e && !o.isDirectory())
+    throw new Error(`Expected a folder but got a file: ${n}`);
+  if (!e && !o.isFile())
+    throw new Error(`Expected a file but got a folder: ${n}`);
+  return o;
 }
-async function handleOpenFolder(payloadPath) {
-  const target = resolveUserPath(payloadPath);
-  if (!target) {
-    throw new Error("No folder path provided.");
-  }
-  ensurePathExists(target, true);
-  const result = await shell.openPath(target);
-  if (result) {
-    throw new Error(result);
-  }
-  return { ok: true, message: `Opened folder: ${target}` };
+async function T(n) {
+  const e = h(n);
+  if (!e) throw new Error("No folder path provided.");
+  p(e, !0);
+  const o = await c.openPath(e);
+  if (o) throw new Error(o);
+  return { ok: !0, message: `Opened folder: ${e}` };
 }
-function pickPreferredExtensions(hint) {
-  const lowerHint = (hint ?? "").toLowerCase();
-  if (lowerHint.includes("pdf")) return [".pdf"];
-  if (lowerHint.includes("docx") || lowerHint.includes("word") || lowerHint.includes("doc"))
-    return [".docx", ".doc"];
-  if (lowerHint.includes("ppt") || lowerHint.includes("powerpoint"))
-    return [".pptx", ".ppt"];
-  if (lowerHint.includes("xls") || lowerHint.includes("excel"))
-    return [".xlsx", ".xls"];
-  if (lowerHint.includes("image") || lowerHint.includes("photo") || lowerHint.includes("picture") || lowerHint.includes("jpg") || lowerHint.includes("jpeg") || lowerHint.includes("png"))
-    return [".png", ".jpg", ".jpeg", ".gif", ".webp"];
-  if (lowerHint.includes("video") || lowerHint.includes("mp4") || lowerHint.includes("mkv"))
-    return [".mp4", ".mkv", ".mov", ".avi"];
-  return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".docx", ".doc"];
+function U(n) {
+  const e = (n ?? "").toLowerCase();
+  return e.includes("pdf") ? [".pdf"] : e.includes("docx") || e.includes("word") || e.includes("doc") ? [".docx", ".doc"] : e.includes("ppt") || e.includes("powerpoint") ? [".pptx", ".ppt"] : e.includes("xls") || e.includes("excel") ? [".xlsx", ".xls"] : e.includes("image") || e.includes("photo") || e.includes("picture") || e.includes("jpg") || e.includes("jpeg") || e.includes("png") ? [".png", ".jpg", ".jpeg", ".gif", ".webp"] : e.includes("video") || e.includes("mp4") || e.includes("mkv") ? [".mp4", ".mkv", ".mov", ".avi"] : [".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".docx", ".doc"];
 }
-async function handleOpenFile(payloadPath, fileNameHint, originalText) {
-  const target = resolveUserPath(payloadPath);
-  if (!target) {
-    throw new Error("No file path provided.");
+async function D(n, e, o) {
+  const t = h(n);
+  if (!t) throw new Error("No file path provided.");
+  const i = a.existsSync(t) ? a.statSync(t) : null;
+  if (i && i.isDirectory()) {
+    const E = a.readdirSync(t), u = e || o || "", g = U(u), x = E.find((l) => {
+      const C = l.toLowerCase();
+      return g.includes(r.extname(l).toLowerCase()) && u && C.includes(u.toLowerCase());
+    }), k = x || E.find((l) => g.includes(r.extname(l).toLowerCase())), v = x || k;
+    if (!v) throw new Error(`Folder has no matching files to open: ${t}`);
+    const f = r.join(t, v);
+    p(f, !1);
+    const y = await c.openPath(f);
+    if (y) throw new Error(y);
+    return { ok: !0, message: `Opened file: ${f}` };
   }
-  const stat = fs.existsSync(target) ? fs.statSync(target) : null;
-  if (stat && stat.isDirectory()) {
-    const entries = fs.readdirSync(target);
-    const nameHint = fileNameHint || originalText || "";
-    const preferredExts = pickPreferredExtensions(nameHint);
-    const byName = entries.find((entry) => {
-      const lowerEntry = entry.toLowerCase();
-      const hasExt = preferredExts.includes(path.extname(entry).toLowerCase());
-      return hasExt && nameHint && lowerEntry.includes(nameHint.toLowerCase());
-    });
-    const byExt = byName || entries.find(
-      (entry) => preferredExts.includes(path.extname(entry).toLowerCase())
-    );
-    const chosen = byName || byExt;
-    if (!chosen) {
-      throw new Error(`Folder has no matching files to open: ${target}`);
-    }
-    const filePath = path.join(target, chosen);
-    ensurePathExists(filePath, false);
-    const result2 = await shell.openPath(filePath);
-    if (result2) {
-      throw new Error(result2);
-    }
-    return { ok: true, message: `Opened file: ${filePath}` };
-  }
-  ensurePathExists(target, false);
-  const result = await shell.openPath(target);
-  if (result) {
-    throw new Error(result);
-  }
-  return { ok: true, message: `Opened file: ${target}` };
+  p(t, !1);
+  const m = await c.openPath(t);
+  if (m) throw new Error(m);
+  return { ok: !0, message: `Opened file: ${t}` };
 }
-async function handlePlayMedia(mediaPath) {
-  const target = resolveUserPath(mediaPath);
-  if (!target) {
-    throw new Error("No media path provided.");
-  }
-  ensurePathExists(target, false);
-  const result = await shell.openPath(target);
-  if (result) {
-    throw new Error(result);
-  }
-  return { ok: true, message: `Playing media: ${target}` };
+async function S(n) {
+  const e = h(n);
+  if (!e) throw new Error("No media path provided.");
+  p(e, !1);
+  const o = await c.openPath(e);
+  if (o) throw new Error(o);
+  return { ok: !0, message: `Playing media: ${e}` };
 }
-function resolveWhitelistedApp(appName) {
-  if (!appName) return null;
-  const normalized = appName.toLowerCase();
-  switch (normalized) {
+function b(n) {
+  if (!n) return null;
+  switch (n.toLowerCase()) {
     case "vscode":
     case "code":
       return "code";
@@ -126,81 +74,55 @@ function resolveWhitelistedApp(appName) {
       return null;
   }
 }
-async function handleLaunchApp(appName) {
-  const command = resolveWhitelistedApp(appName);
-  if (!command) {
-    throw new Error(`App is not in whitelist: ${appName ?? "unknown"}`);
-  }
-  await shell.openExternal(command);
-  return { ok: true, message: `Launched app: ${command}` };
+async function A(n) {
+  const e = b(n);
+  if (!e) throw new Error(`App is not in whitelist: ${n ?? "unknown"}`);
+  return await c.openExternal(e), { ok: !0, message: `Launched app: ${e}` };
 }
-async function executeCommand(command) {
+async function I(n) {
   try {
-    switch (command.action) {
+    switch (n.action) {
       case "open_folder":
-        return await handleOpenFolder(command.payload.path);
+        return await T(n.payload.path);
       case "open_file":
-        return await handleOpenFile(
-          command.payload.path,
-          // @ts-expect-error fileName is allowed but not required on payload
-          command.payload.fileName,
-          command.originalText
-        );
+        const e = "fileName" in n.payload ? n.payload.fileName : void 0;
+        return await D(n.payload.path, e, n.originalText);
       case "play_media":
-        return await handlePlayMedia(command.payload.mediaPath ?? command.payload.path);
+        return await S(n.payload.mediaPath ?? n.payload.path);
       case "launch_app":
-        return await handleLaunchApp(command.payload.appName);
+        return await A(n.payload.appName);
       default:
-        throw new Error(`Unsupported action: ${command.action}`);
+        throw new Error(`Unsupported action: ${n.action}`);
     }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown execution error";
-    return { ok: false, message };
+  } catch (e) {
+    return { ok: !1, message: e instanceof Error ? e.message : "Unknown execution error" };
   }
 }
-createRequire(import.meta.url);
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname$1, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
-function createWindow() {
-  win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+const j = r.dirname(O(import.meta.url));
+process.env.APP_ROOT = r.join(j, "..");
+const w = process.env.VITE_DEV_SERVER_URL, z = r.join(process.env.APP_ROOT, "dist-electron"), R = r.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = w ? r.join(process.env.APP_ROOT, "public") : R;
+let s;
+function L() {
+  s = new P({
+    icon: r.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs")
+      preload: r.join(j, "preload.mjs")
     }
-  });
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  });
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
-  }
+  }), s.webContents.on("did-finish-load", () => {
+    s == null || s.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  }), w ? s.loadURL(w) : s.loadFile(r.join(R, "index.html"));
 }
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
-  }
+d.on("window-all-closed", () => {
+  process.platform !== "darwin" && (d.quit(), s = null);
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+d.on("activate", () => {
+  P.getAllWindows().length === 0 && L();
 });
-app.whenReady().then(createWindow);
-ipcMain.handle("deskagent/run-command", async (_event, command) => {
-  console.log("Received validated command from renderer:", command);
-  const result = await executeCommand(command);
-  return result;
-});
+d.whenReady().then(L);
+$.handle("deskagent/run-command", async (n, e) => (console.log("Received validated command from renderer:", e), await I(e)));
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  z as MAIN_DIST,
+  R as RENDERER_DIST,
+  w as VITE_DEV_SERVER_URL
 };

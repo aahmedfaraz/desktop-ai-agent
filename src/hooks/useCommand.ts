@@ -5,13 +5,13 @@ import { validateCommand } from '../../shared/commandSchema';
 
 type Status = 'idle' | 'thinking' | 'error' | 'success';
 
-declare global {
-  interface Window {
-    ipcRenderer: {
-      invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
-    };
-  }
+// Define a safe wrapper for ipcRenderer
+interface IpcRendererInvoke {
+  invoke(channel: string, ...args: unknown[]): Promise<unknown>;
 }
+
+// Access ipcRenderer safely via window
+const ipc: IpcRendererInvoke = window.ipcRenderer;
 
 export function useCommand() {
   const [status, setStatus] = useState<Status>('idle');
@@ -24,9 +24,11 @@ export function useCommand() {
     setError(null);
 
     try {
+      // Parse the command using Groq
       const groqResult = await parseCommandWithGroq(text, {
         lastCommandText: lastCommand?.originalText,
-        lastResolvedPath: lastCommand?.payload.path ?? lastCommand?.payload.mediaPath,
+        lastResolvedPath:
+          lastCommand?.payload.path ?? lastCommand?.payload.mediaPath,
       });
 
       const candidate: DeskAgentCommand = {
@@ -35,8 +37,8 @@ export function useCommand() {
         originalText: text,
       };
 
+      // Validate the command
       const validated = validateCommand(candidate);
-
       if (!validated) {
         throw new Error('Parsed command did not pass validation.');
       }
@@ -44,10 +46,11 @@ export function useCommand() {
       setLastCommand(validated);
       setResultMessage(null);
 
-      const result = (await window.ipcRenderer.invoke('deskagent/run-command', validated)) as {
-        ok: boolean;
-        message: string;
-      };
+      // Invoke Electron IPC
+      const result = (await ipc.invoke(
+        'deskagent/run-command',
+        validated
+      )) as { ok: boolean; message: string };
 
       setResultMessage(result.message);
       setStatus(result.ok ? 'success' : 'error');
@@ -72,4 +75,3 @@ export function useCommand() {
     sendCommand,
   };
 }
-
