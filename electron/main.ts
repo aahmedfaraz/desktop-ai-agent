@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import type { DeskAgentCommand } from '../shared/commandSchema'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -66,3 +67,14 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(createWindow)
+
+ipcMain.handle('deskagent/run-command', async (_event, command: DeskAgentCommand) => {
+  console.log('Received validated command from renderer:', command)
+  // TODO: Forward to executor.ts when implemented.
+  // For now, just echo back a success message for UI testing.
+  return {
+    ok: true,
+    message: `Simulated execution of action "${command.action}".`,
+  }
+})
+
