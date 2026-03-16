@@ -53,3 +53,7 @@ Note: Only predefined safe actions are allowed:
 `play_media`
 
 DeskAgent validates paths and applications before running commands to prevent unsafe execution.
+
+
+## Architecture Diagram
+![Architecture Diagram](arch-diagram.png)
