@@ -4,7 +4,7 @@ import './index.css';
 
 function App() {
   const [input, setInput] = useState('');
-  const { status, error, lastCommand, sendCommand } = useCommand();
+  const { status, error, lastCommand, resultMessage, sendCommand } = useCommand();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +32,11 @@ function App() {
         <p>
           <strong>Status:</strong> {status}
         </p>
+        {resultMessage && (
+          <p>
+            <strong>Result:</strong> {resultMessage}
+          </p>
+        )}
         {lastCommand && (
           <pre className="last-command">
             {JSON.stringify(lastCommand, null, 2)}

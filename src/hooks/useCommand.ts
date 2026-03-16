@@ -17,6 +17,7 @@ export function useCommand() {
   const [status, setStatus] = useState<Status>('idle');
   const [lastCommand, setLastCommand] = useState<DeskAgentCommand | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resultMessage, setResultMessage] = useState<string | null>(null);
 
   const sendCommand = async (text: string) => {
     setStatus('thinking');
@@ -38,14 +39,24 @@ export function useCommand() {
       }
 
       setLastCommand(validated);
+      setResultMessage(null);
 
-      const result = await window.ipcRenderer.invoke('deskagent/run-command', validated);
+      const result = (await window.ipcRenderer.invoke('deskagent/run-command', validated)) as {
+        ok: boolean;
+        message: string;
+      };
 
-      setStatus('success');
+      setResultMessage(result.message);
+      setStatus(result.ok ? 'success' : 'error');
+      if (!result.ok) {
+        setError(result.message);
+      }
+
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
+      setResultMessage(null);
       setStatus('error');
     }
   };
@@ -54,6 +65,7 @@ export function useCommand() {
     status,
     lastCommand,
     error,
+    resultMessage,
     sendCommand,
   };
 }
